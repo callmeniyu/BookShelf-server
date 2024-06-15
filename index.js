@@ -98,11 +98,17 @@ app.patch("/addbook", async (req, res) => {
     } catch (error) {
         console.log(error)
     }
-});
+})
 
-app.get("/allbooks", async (req, res) => {
-    const response = await Book.find()
-    res.json(response)
+app.post("/allbooks", async (req, res) => {
+    try {
+        const email = req.body.email
+        const response = await User.findOne({ email: email })
+        const books = response.books
+        res.json({ success: true, books: books })
+    } catch (error) {
+        console.log(error)
+    }
 })
 
 app.post("/removebook", async (req, res) => {
