@@ -5,31 +5,17 @@ import cors from "cors"
 import path from "path"
 import dotenv from "dotenv"
 import mongoose from "mongoose"
+import jwt from "jsonwebtoken"
 import brcypt from "bcrypt"
-import passport from "passport"
-import { Strategy as LocalStrategy } from "passport-local"
-import session from "express-session"
-import GoogleStrategy from "passport-google-oauth2"
 
 const port = 4000
-const saltRounds = 10
+const saltRound = 10
 const app = express()
 dotenv.config()
 
 app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
-
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: true,
-    })
-)
-
-app.use(passport.initialize())
-app.use(passport.session())
 
 mongoose
     .connect(process.env.MONGO_URL)
@@ -119,10 +105,82 @@ app.get("/allbooks", async (req, res) => {
 
 app.post("/removebook", async (req, res) => {
     const response = await Book.findOneAndDelete({ id: req.body.bookId })
-    res.json({succes:true, message:`${response.name} deleted`})
+    res.json({ succes: true, message: `${response.name} deleted` })
 })
 
+app.post("/signup", async (req, res) => {
+    try {
+        const username = req.body.formData.email
+        const email = req.body.formData.email
+        const password = req.body.formData.password
 
+        const checkUser = await User.findOne({ email: email })
+        if (checkUser) {
+            res.json({ success: false, message: "User already exists, please try login" })
+        } else {
+            brcypt.hash(password, saltRound, async (err, hash) => {
+                if (err) {
+                    console.log("Error hashing password:", err)
+                } else {
+                    const user = new User({
+                        username: username,
+                        email: email,
+                        password: hash,
+                    })
+
+                    user.save()
+                    console.log(`new user ${username} saved to DB`)
+                    const data = {
+                        user: {
+                            id: user.email,
+                        },
+                    }
+
+                    const token = jwt.sign(data, process.env.VITE_JWT_SECRET)
+                    res.json({ success: true, token: token })
+                }
+            })
+        }
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+app.post("/login", async (req, res) => {
+    const email = req.body.formData.email
+    const password = req.body.formData.password
+    try {
+        const user = await User.findOne({ email: email })
+        if (user) {
+            brcypt.compare(password, user.password, (err, valid) => {
+                if (err) {
+                    console.log("Error comparing passwords:", err)
+                } else {
+                    if (valid) {
+                        const data = {
+                            user: {
+                                id: user.email
+                            }
+                        }
+
+                        const token = jwt.sign(data, process.env.VITE_JWT_SECRET)
+                        res.json({ success: true, token: token })
+                    } else {
+                        res.json({ success: false, message: "Incorrect password" })
+                    }
+                }
+            })
+        } else {
+            res.json({ success: false, message: "No such user registered" })
+        }
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+app.post("googlelogin", (req, res) => {
+    
+})
 
 // MULTER STORAGE ENGINE
 const storage = multer.diskStorage({
@@ -141,106 +199,6 @@ app.post("/upload", upload.single("book"), (req, res) => {
         success: true,
         img_url: `http://localhost:${port}/images/${req.file.filename}`,
     })
-})
-
-app.post("/login", (req, res) => {
-    passport.authenticate("local", (err, user, info) => {
-        if (err) {
-            return res.status(500).json({ message: "Error occured in logging-in" })
-        }
-        if (!user) {
-            return res.status(401).json({ message: info.message })
-        }
-        req.logIn(user, (err) => {
-            if (err) {
-                return res.status(500).json({ message: "Error occured while authenticating" })
-            }
-            return res.status(200).json({ message: req.session })
-        })
-    })(req, res)
-})
-
-app.post("/signup", async (req, res) => {
-    const username = req.body.username
-    const email = req.body.email
-    const password = req.body.password
-
-    console.log("email:", email,"Password:",password)
-    try {
-        const checkResult = await User.findOne({ email: email })
-        if (checkResult) {
-            res.json({ success:false, message: "User already registered, Please try login" })
-        } else {
-            brcypt.hash(password, saltRounds, async (err, hash) => {
-                if (err) {
-                    console.log("Error hashing password:", err)
-                } else {
-                    const user = new User({
-                        username: username,
-                        email: email,
-                        password: hash,
-                    })
-                    await user.save()
-                    console.log(`${username} saved to Users DB`)
-                    req.logIn(user, (err) => {
-                        if (err) {
-                            return res.json({success:false, message: "Error occured in logging-in" })
-                        }
-                        return res.json({success:true, session: req.session })
-                    })
-                }
-            })
-        }
-    } catch (error) {
-        console.log(error)
-    }
-})
-
-app.post('/authcheck', (req, res) => {
-    console.log("hit1")
-    console.log('Session:', req.session);
-    console.log('User:', req.user);
-    if (req.isAuthenticated()) {
-        console.log("hit2")
-        res.json({ authenticated: true, user: req.user });
-    } else {
-      res.json({ authenticated: false });
-    }
-  });
-
-passport.use(
-    "local",
-    new LocalStrategy({ usernameField: "email" }, async function verify(email, password, cb) {
-        try {
-            const user = await User.findOne({ email: email })
-            if (user) {
-                const storedPassword = user.password
-                brcypt.compare(password, storedPassword, (err, valid) => {
-                    if (err) {
-                        console.log("Error comparing passwords")
-                        return cb(err)
-                    } else {
-                        if (valid) {
-                            return cb(null, user)
-                        } else {
-                            return cb(null, false, { message: "Incorrect password" })
-                        }
-                    }
-                })
-            } else {
-                return cb(null, false)
-            }
-        } catch (error) {
-            console.log(error)
-        }
-    })
-)
-
-passport.serializeUser((user, cb) => {
-    cb(null, user)
-})
-passport.deserializeUser((user, cb) => {
-    cb(null, user)
 })
 
 app.listen(port, () => {
