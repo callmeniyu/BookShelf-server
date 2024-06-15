@@ -144,7 +144,7 @@ app.post("/signup", async (req, res) => {
     } catch (error) {
         console.log(error)
     }
-});
+})
 
 app.post("/login", async (req, res) => {
     const email = req.body.formData.email
@@ -159,8 +159,8 @@ app.post("/login", async (req, res) => {
                     if (valid) {
                         const data = {
                             user: {
-                                id: user.email
-                            }
+                                id: user.email,
+                            },
                         }
 
                         const token = jwt.sign(data, process.env.VITE_JWT_SECRET)
@@ -176,10 +176,25 @@ app.post("/login", async (req, res) => {
     } catch (error) {
         console.log(error)
     }
-});
+})
 
-app.post("googlelogin", (req, res) => {
-    
+app.post("/googlelogin", async(req, res) => {
+    const email = req.body.email
+    console.log(email)
+    try {
+        const checkUser = await User.findOne({email:email})
+        if (checkUser) {
+            console.log("User already registered")
+        } else {
+            const user = new User({
+                email: email,
+            })
+            user.save()
+            console.log(`new user ${email} saved to DB`)
+        }
+    } catch (error) {
+        console.log(error)
+    }
 })
 
 // MULTER STORAGE ENGINE
