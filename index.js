@@ -71,32 +71,34 @@ const User = mongoose.model("User", {
         type: String,
         require: true,
     },
-    book: {
-        type: Object,
+    books: {
+        type: [Object],
     },
 })
 
 app.get("/", (req, res) => {
     res.send("Working")
 })
-app.post("/addbook", async (req, res) => {
-    console.log(req.body)
-    const newBook = new Book({
-        id: req.body.book.id,
-        name: req.body.book.name,
-        author: req.body.book.author,
-        isbn: req.body.book.isbn,
-        date: req.body.book.date,
-        rating: req.body.book.rating,
-        link: req.body.book.link,
-        summary: req.body.book.summary,
-        notes: req.body.book.notes,
-        img: req.body.book.img,
-    })
-    await newBook.save()
-    res.json({ success: "true", message: "Book Saved" })
-    console.log("Saved new book")
-})
+app.patch("/addbook", async (req, res) => {
+    try {
+        const email = req.body.email
+        const newBook = {
+            id: req.body.id,
+            name: req.body.name,
+            author: req.body.author,
+            isbn: req.body.isbn,
+            date: req.body.date,
+            rating: req.body.rating,
+            link: req.body.link,
+            summary: req.body.summary,
+            notes: req.body.notes,
+            img: req.body.img,
+        }
+        const response = await User.findOneAndUpdate({ email: email }, { $push: { books: newBook } }, { new: true })
+    } catch (error) {
+        console.log(error)
+    }
+});
 
 app.get("/allbooks", async (req, res) => {
     const response = await Book.find()
@@ -178,11 +180,11 @@ app.post("/login", async (req, res) => {
     }
 })
 
-app.post("/googlelogin", async(req, res) => {
+app.post("/googlelogin", async (req, res) => {
     const email = req.body.email
     console.log(email)
     try {
-        const checkUser = await User.findOne({email:email})
+        const checkUser = await User.findOne({ email: email })
         if (checkUser) {
             console.log("User already registered")
         } else {
