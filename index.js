@@ -22,43 +22,6 @@ mongoose
     .then(console.log("Connected to DB"))
     .catch((err) => console.log(err))
 
-const Book = mongoose.model("Book", {
-    id: {
-        type: Number,
-        unique: true,
-    },
-    name: {
-        type: String,
-        require: true,
-    },
-    author: {
-        type: String,
-        require: true,
-    },
-    isbn: {
-        type: Number,
-        unique: true,
-    },
-    date: {
-        type: String,
-    },
-    rating: {
-        type: Number,
-    },
-    link: {
-        type: String,
-    },
-    summary: {
-        type: String,
-    },
-    notes: {
-        type: String,
-    },
-    img: {
-        type: String,
-    },
-})
-
 const User = mongoose.model("User", {
     username: {
         type: String,
@@ -79,39 +42,57 @@ const User = mongoose.model("User", {
 app.get("/", (req, res) => {
     res.send("Working")
 })
-app.patch("/addbook", async (req, res) => {
-    try {
-        const email = req.body.email
-        const newBook = {
-            id: req.body.id,
-            name: req.body.name,
-            author: req.body.author,
-            isbn: req.body.isbn,
-            date: req.body.date,
-            rating: req.body.rating,
-            link: req.body.link,
-            summary: req.body.summary,
-            notes: req.body.notes,
-            img: req.body.img,
+
+const fetchUser = async (req, res, next) => {
+    const token = req.headers["auth-token"]
+
+    if (!token) {
+        res.status(401).send({ error: "please authenticate user" })
+    } else {
+        try {
+            const data = jwt.verify(token, process.env.JWT_SECRET)
+            req.user = data.user
+            next()
+        } catch (error) {
+            console.log(error)
         }
+    }
+}
+
+app.patch("/addbook", fetchUser, async (req, res) => {
+    const email = req.user.id
+    const newBook = {
+        id: req.body.id,
+        name: req.body.name,
+        author: req.body.author,
+        isbn: req.body.isbn,
+        date: req.body.date,
+        rating: req.body.rating,
+        link: req.body.link,
+        summary: req.body.summary,
+        notes: req.body.notes,
+        img: req.body.img,
+    }
+    try {
         const response = await User.findOneAndUpdate({ email: email }, { $push: { books: newBook } }, { new: true })
     } catch (error) {
         console.log(error)
     }
 })
 
-app.post("/allbooks", async (req, res) => {
+app.post("/allbooks", fetchUser, async (req, res) => {
+    const email = req.user.id
     try {
-        const email = req.body.email
         const response = await User.findOne({ email: email })
         const books = response.books
+        console.log("books", books)
         res.json({ success: true, books: books })
     } catch (error) {
         console.log(error)
     }
 })
 
-app.post("/removebook", async (req, res) => {
+app.post("/removebook", fetchUser, async (req, res) => {
     const response = await Book.findOneAndDelete({ id: req.body.bookId })
     res.json({ succes: true, message: `${response.name} deleted` })
 })
@@ -144,7 +125,7 @@ app.post("/signup", async (req, res) => {
                         },
                     }
 
-                    const token = jwt.sign(data, process.env.VITE_JWT_SECRET)
+                    const token = jwt.sign(data, process.env.JWT_SECRET)
                     res.json({ success: true, token: token })
                 }
             })
@@ -171,7 +152,7 @@ app.post("/login", async (req, res) => {
                             },
                         }
 
-                        const token = jwt.sign(data, process.env.VITE_JWT_SECRET)
+                        const token = jwt.sign(data, process.env.JWT_SECRET)
                         res.json({ success: true, token: token })
                     } else {
                         res.json({ success: false, message: "Incorrect password" })
