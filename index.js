@@ -85,7 +85,6 @@ app.post("/allbooks", fetchUser, async (req, res) => {
     try {
         const response = await User.findOne({ email: email })
         const books = response.books
-        console.log("books", books)
         res.json({ success: true, books: books })
     } catch (error) {
         console.log(error)
@@ -175,16 +174,28 @@ app.post("/login", async (req, res) => {
 
 app.post("/googlelogin", async (req, res) => {
     const email = req.body.email
-    console.log(email)
     try {
         const checkUser = await User.findOne({ email: email })
         if (checkUser) {
-            console.log("User already registered")
+            const data = {
+                user: {
+                    id: email,
+                },
+            }
+            const token = jwt.sign(data, process.env.JWT_SECRET)
+            res.json({ success: true, token: token })
         } else {
             const user = new User({
                 email: email,
             })
             user.save()
+            const data = {
+                user: {
+                    id: email,
+                },
+            }
+            const token = jwt.sign(data, process.env.JWT_SECRET)
+
             console.log(`new user ${email} saved to DB`)
         }
     } catch (error) {
