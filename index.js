@@ -45,7 +45,6 @@ app.get("/", (req, res) => {
 
 const fetchUser = async (req, res, next) => {
     const token = req.headers["auth-token"]
-
     if (!token) {
         res.status(401).send({ error: "please authenticate user" })
     } else {
@@ -75,6 +74,7 @@ app.patch("/addbook", fetchUser, async (req, res) => {
     }
     try {
         const response = await User.findOneAndUpdate({ email: email }, { $push: { books: newBook } }, { new: true })
+        console.log(`newbook ${newBook.name} added`)
     } catch (error) {
         console.log(error)
     }
@@ -96,7 +96,8 @@ app.post("/removebook", fetchUser, async (req, res) => {
     const bookId = req.body.bookId
     try {
         const response = await User.findOneAndUpdate({ email: email }, { $pull: { books: { id: bookId } } }, { new: true })
-        res.json({ succes: true, message: `${response.name} deleted` })
+        res.json({ succes: true, message: `book deleted` })
+        console.log("book deleted")
     } catch (error) {
         console.log(error)
     }
