@@ -93,8 +93,14 @@ app.post("/allbooks", fetchUser, async (req, res) => {
 })
 
 app.post("/removebook", fetchUser, async (req, res) => {
-    const response = await Book.findOneAndDelete({ id: req.body.bookId })
-    res.json({ succes: true, message: `${response.name} deleted` })
+    const email = req.user.id
+    const bookId = req.body.bookId
+    try {
+        const response = await User.findOneAndUpdate({ email: email }, { $pull: { books: { id: bookId } } }, { new: true })
+        res.json({ succes: true, message: `${response.name} deleted` })
+    } catch (error) {
+        console.log(error)
+    }
 })
 
 app.post("/signup", async (req, res) => {
