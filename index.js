@@ -91,6 +91,48 @@ app.post("/allbooks", fetchUser, async (req, res) => {
     }
 })
 
+
+app.post("/updatebook", fetchUser, async (req, res) => {
+    const email = req.user.id;
+    const bookId = parseInt(req.body.bookId);
+    const updatedBook = {
+        name: req.body.formData.name,
+        author: req.body.formData.author,
+        isbn: req.body.formData.isbn,
+        date: req.body.formData.date,
+        rating: req.body.formData.rating,
+        link: req.body.formData.link,
+        summary: req.body.formData.summary,
+        notes: req.body.formData.notes,
+        img: req.body.formData.img,
+    };
+
+    try {
+        const response = await User.findOneAndUpdate(
+            { email: email, "books.id": bookId },
+            {
+                $set: {
+                    "books.$.name": updatedBook.name,
+                    "books.$.author": updatedBook.author,
+                    "books.$.isbn": updatedBook.isbn,
+                    "books.$.date": updatedBook.date,
+                    "books.$.rating": updatedBook.rating,
+                    "books.$.link": updatedBook.link,
+                    "books.$.summary": updatedBook.summary,
+                    "books.$.notes": updatedBook.notes,
+                    "books.$.img": updatedBook.img
+                }
+            },
+            { new: true }
+        );
+
+        // console.log(response);
+        res.json({ success: true, message: "Book updated successfully", updatedBook: response });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "Error updating book" });
+    }
+});
 app.post("/removebook", fetchUser, async (req, res) => {
     const email = req.user.id
     const bookId = req.body.bookId
