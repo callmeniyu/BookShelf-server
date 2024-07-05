@@ -261,7 +261,7 @@ app.use("/images", express.static("upload/images"))
 app.post("/upload", upload.single("book"), (req, res) => {
     res.json({
         success: true,
-        img_url: `http://localhost:${port}/images/${req.file.filename}`,
+        img_url: `https://bookshelf-server-1-d660.onrender.com/images/${req.file.filename}`,
     })
 })
 
